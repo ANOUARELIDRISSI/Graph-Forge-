@@ -1,30 +1,180 @@
-\chapter{Implementation}
-\label{chap:implementation}
+\chapter{Results}
+\label{chap:results}
 
-\section{Development Environment}
-Describe the development environment, project organization, and configuration needed to reproduce the work.
+This chapter consolidates the measurements obtained on the platform: the result of the ingestion build, the comparison of the two retrieval strategies, the status of the Ragas evaluation and the end-to-end validation of the external providers. All figures come from artefacts produced by the pipeline itself, and each table states the conditions under which it was obtained.
 
-\section{Key Features}
-Present the most important implemented features. For each feature, explain the purpose, the implementation approach, and the result for the user.
+\section{Ingestion and Index Build}
+\label{sec:build-results}
+The last published build is the reference state of the platform. The ingestion worker processed the curated working subset of the corpus and published a new generation only after the counts of the graph and of the vector index had been verified, so the numbers in Table~\ref{tab:build} describe a consistent state rather than a partially written one.
 
-\section{User Interface and Demonstration}
-Add only the screenshots that help a reader understand a significant workflow. Each screenshot should have a readable caption and a short explanation in the surrounding text.
-
-\begin{figure}[H]
+\begin{table}[H]
 \centering
-\includegraphics[width=0.78\textwidth]{images/transformers.jpg}
-\caption{Example architecture figure. Replace the image and caption with content relevant to your project.}
-\label{fig:example-image}
-\end{figure}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{5.6cm}X>{\centering\arraybackslash}p{2.2cm}@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{Artefact} & \textbf{Meaning} & \textbf{Value} \\
+\midrule
+Documents & Validated documents in the indexed build & 54 \\
+Chunks & Overlapping 800/120-character fragments & 574 \\
+Vector points & Chunks indexed in Qdrant & 574 \\
+Graph nodes & Entities, pages and chunks in the graph & 82 \\
+Graph edges & Typed relations between those nodes & 355 \\
+Neo4j status & Property-graph backend reachable & Enabled \\
+Extraction method & Provenance tag of the extracted elements & Heuristic fallback \\
+\bottomrule
+\end{tabularx}
+\caption{Counts of the last published ingestion build.}
+\label{tab:build}
+\end{table}
 
-To insert an image, place it in a folder such as \texttt{Figures/} and replace the placeholder above with:
-\begin{verbatim}
-\includegraphics[width=0.78\textwidth]{Figures/your-image.png}
-\end{verbatim}
-Use a clear filename, reference the figure in the text as Figure~\ref{fig:example-image}, and keep only images that support the explanation.
+Two observations follow from Table~\ref{tab:build}. First, the vector index and the chunk count are equal, which confirms that every chunk produced by the pipeline reached the vector store and that no chunk was lost between the ETL stage and the indexing stage. Second, the extraction provenance shows that the published build was produced through the heuristic fallback: the remote extractor was deferred by its per-run budget and the retry queue kept the chunks for a later cycle instead of dropping them, so the graph is complete in structure but does not yet benefit from the language-model extraction on the whole corpus.
 
-\section{Deployment}
-Explain how the solution is delivered or deployed, if this is within the project scope.
+\section{Retrieval Comparison}
+\label{sec:retrieval-comparison}
+Table~\ref{tab:retrieval-comparison} compares the two retrieval strategies on the same reviewed corpus of 39 documents and 534 chunks and on the same four navigation questions. The comparison is therefore internal: the only variable is the retrieval strategy itself.
 
-\section*{Conclusion}
-This chapter shows how the proposed design was translated into a working solution.
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{Strategy} & \textbf{Recall@5} & \textbf{MRR} & \textbf{nDCG@5} & \textbf{Mean latency} \\
+\midrule
+Vector (hybrid semantic + BM25) & 0.75 & 0.5833 & 0.625 & 74.36 ms \\
+GraphRAG (graph + re-ranking) & 0.75 & 0.5833 & 0.625 & 94.32 ms \\
+\bottomrule
+\end{tabularx}
+\caption{Retrieval quality of the two strategies on four reviewed questions.}
+\label{tab:retrieval-comparison}
+\end{table}
+
+The two strategies are strictly tied on ranking quality and the graph-aware path costs about twenty milliseconds more per question. Read together with the per-case results of Table~\ref{tab:case-detail}, this means that the graph currently does not modify the ordering on this corpus: the same question is missed by both strategies and the same questions are answered at the same rank.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{6.4cm}>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{Reviewed question} & \textbf{Vector rank} & \textbf{GraphRAG rank} \\
+\midrule
+Where can I find AMMC issuer financial statements? & not found & not found \\
+Quel site présente la stratégie data et statistiques de Bank Al-Maghrib ? & 1 & 1 \\
+Où consulter le fonds de soutien financier aux TPME de Bank Al-Maghrib ? & 1 & 1 \\
+Where are HCP enterprise economic outlook publications listed? & 3 & 3 \\
+\bottomrule
+\end{tabularx}
+\caption{Rank of the expected source for each reviewed question (rank 1 is best).}
+\label{tab:case-detail}
+\end{table}
+
+The failure case is informative rather than accidental. The AMMC question targets a listing page of issuers' financial statements, an entry point that is deep in the site hierarchy and whose textual content is mostly a list of company names and report labels; the page is indexed, but the passages it produces compete with richer pages that mention the same issuers. This is precisely the situation that a curated multi-hop question set and a document-level relevance signal are meant to address, and it is the reason the report does not present the current recall as a ceiling.
+
+\section{Ragas Evaluation Status}
+\label{sec:ragas-status}
+The Ragas execution was verified on a real generated answer, and its outcome is summarised in Table~\ref{tab:ragas}. We report the values exactly as the framework returned them, including the fact that one metric did not complete.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\centering\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{Ragas metric} & \textbf{Value} & \textbf{Status} \\
+\midrule
+Context precision (without reference) & 0.50 & Measured on one evaluated row \\
+Faithfulness & not available & Judge did not return a verdict within the run budget \\
+Answer relevancy & not run & Requires the embedding-based judge (\texttt{--full}) \\
+Evaluation rows completed & 1 & Single-row integration diagnostic \\
+Published results file & not written & Run rejected because a metric is missing \\
+\bottomrule
+\end{tabularx}
+\caption{Outcome of the Ragas execution on the live system.}
+\label{tab:ragas}
+\end{table}
+
+Table~\ref{tab:ragas} is deliberately presented as a status rather than as a score. The context-precision value of 0.50 means that, for the evaluated question, one of the retrieved passages was judged off-topic: the retrieved context mixed AMMC report listings with an unrelated Bank Al-Maghrib passage. Because faithfulness could not be measured, the platform refuses to publish a results file and the evaluation view reports Ragas as unavailable. This is a methodological choice: a partially measured answer-level metric would be less honest than an explicit gap, and it prevents a favourable number from being quoted without its missing counterpart.
+
+\section{End-to-End Validation}
+\label{sec:e2e-validation}
+The components were also validated end to end against the external providers and against the pipeline itself, so that the report does not rest only on offline measurements. Table~\ref{tab:validation} summarises the observed evidence.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{4.2cm}X>{\centering\arraybackslash}p{1.7cm}@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{ID} & \textbf{Validation target} & \textbf{Observed evidence} & \textbf{Status} \\
+\midrule
+V-01 & Heterogeneous ingestion & HTML, RSS/Atom and PDF sources parsed through one provenance-aware path; each accepted item keeps its URL, language, document type and crawl timestamp & Pass \\
+V-02 & Chunking and indexing & 574 chunks for 54 documents, all 574 present in the vector index with their chunk identifiers & Pass \\
+V-03 & Production embeddings & Passage and query embeddings returned 2048-dimensional vectors from the NVIDIA endpoint & Pass \\
+V-04 & Grounded generation & Answer generated in 3.41 s from retrieved context with the source list attached & Pass \\
+V-05 & Remote entity extraction & NVIDIA extraction returned 7 entities and 3 relations on a bounded multilingual sample & Pass \\
+V-06 & Provider saturation handling & Mistral extraction returned HTTP 429 and the chunk was deferred to the durable retry queue instead of being dropped & Pass \\
+V-07 & Graph analytics & Neo4j build published 82 nodes and 355 edges; PageRank, degree centrality, communities and shortest paths exposed by the API & Pass \\
+V-08 & Answer-level evaluation & Ragas ran on real retrieved context but one metric did not complete, so no results file was published & Partial \\
+V-09 & Distributed ETL on a cluster & Spark and WebHDFS paths implemented and flag-gated; the reported figures were measured with the local engines & Pending \\
+\bottomrule
+\end{tabularx}
+\caption{End-to-end validation of the platform components.}
+\label{tab:validation}
+\end{table}
+
+The validation matrix separates what has been demonstrated from what remains to be demonstrated. Ingestion, chunking, indexing, embeddings, generation, extraction, provider-failure handling and graph analytics were all observed on the live system. Two entries remain open: the answer-level evaluation is partial because of the incomplete Ragas metric, and the distributed Spark and WebHDFS paths are implemented but the reported measurements were produced with their local equivalents, which is why they are marked as pending rather than as passed.
+
+\section{Example of a Grounded Answer}
+\label{sec:example-answer}
+To make the response contract of the platform concrete, this section reproduces one complete exchange in the exact shape returned by the service: the question, the grounded answer and the sources that were attached to it. The exchange is an illustration of the format and of the provenance mechanism, so it is not counted in the metrics of the previous sections.
+
+\begin{infobox}
+\textbf{Question.} \emph{Quels types de rapports financiers les émetteurs publient-ils auprès de l'AMMC ?}
+\end{infobox}
+
+\begin{successbox}
+\textbf{Answer.} According to the AMMC listing of issuers' financial statements, the published documents fall into two families that the page exposes directly. The first is the annual reports, indexed by fiscal year: the listing for the 2025 series names, among others, STOKVIS NORD AFRIQUE, MANAGEM, CTM, HOLCIM MAROC and ATTIJARIWAFA BANK. The second is the first-semester reports, published for the following fiscal year, where the 2026 series names EQDOM, Cr\'edit Agricole du Maroc, CIH Bank, BMCI and Attijariwafa Bank. The listing can be browsed by year and by issuer. The supplied context does not provide evidence of a quarterly report family, so that report type cannot be confirmed from the indexed sources.
+\end{successbox}
+
+The answer is not a paraphrase of the question: each statement is traceable to a retrieved passage, and the last sentence is an explicit refusal to assert something the evidence does not support. The response also carried the matched entities (AMMC, Bank Al-Maghrib), the size of the traversed subgraph, the evidence snippets with their scores, the mean latency of the request and a mode field stating whether the text was generated by the provider model or composed locally by the deterministic fallback. Table~\ref{tab:example-sources} lists the sources that accompanied the answer, in the retrieval order in which the service returned them.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}c>{\raggedright\arraybackslash}p{4.9cm}X@{}}
+\toprule
+\rowcolor{lightblue}
+\textbf{Rank} & \textbf{Source} & \textbf{Type and role in the answer} \\
+\midrule
+1 & \href{https://www.ammc.ma/fr/liste-etats-financiers-emetteurs}{ammc.ma --- liste des \'etats financiers des \'emetteurs (rapports annuels)} & HTML listing; supports the annual-report statement and supplies the issuer names of the 2025 series. \\
+2 & \href{https://www.ammc.ma/fr/liste-etats-financiers-emetteurs}{ammc.ma --- m\^eme listing, rapports 1\textsuperscript{er} semestre} & HTML listing; supports the first-semester statement and supplies the issuer names of the 2026 series. \\
+3 & \href{https://www.bkam.ma/content/download/829011/9037410/Rapport\%2024\%20FR.pdf}{bkam.ma --- Rapport annuel 2024 (PDF)} & PDF retrieved for the question but unrelated to AMMC reporting obligations; correctly ignored by the answer, and the reason for the context precision of 0.50 reported in Table~\ref{tab:ragas}. \\
+\bottomrule
+\end{tabularx}
+\caption{Sources returned with the example answer, in retrieval order.}
+\label{tab:example-sources}
+\end{table}
+
+Two behaviours are visible in Table~\ref{tab:example-sources}. The evidence list is diversified, because the service reserves at most one passage per document, so the two AMMC passages come from two distinct chunks of the same listing rather than from a single fragment repeated; and the third source shows why provenance is useful, since a passage that the retriever judged semantically close but that is substantively irrelevant can be displayed and identified as off-topic instead of being hidden inside a fluent answer. This is exactly the situation that the Ragas context-precision metric isolates, and the example therefore shows the same phenomenon that the evaluation measures.
+
+\section{Discussion}
+\label{sec:discussion}
+The results support three conclusions and expose three gaps. The platform works end to end: a heterogeneous document collected from an authorised source reaches a cited answer, and every intermediate state preserves the provenance that makes the answer verifiable. Retrieval is functional but not yet discriminating: a hybrid vector and BM25 retriever achieves a Recall@5 of 0.75 on the reviewed cases, and adding the graph neither improves nor degrades that ranking on such a small set. The evaluation chain is real but incomplete: Ragas runs against the live system and returns a usable context-precision value, while faithfulness remains unmeasured.
+
+The first gap is evaluation depth. Four navigation questions cannot distinguish two strategies whose rankings coincide; questions requiring several hops, questions written in Arabic, and questions whose answer does not exist in the corpus are needed before the recall figures can be interpreted as quality. The second gap is extraction coverage: the published build carries the heuristic provenance tag, so the relational content of the graph understates what the language-model extractor produces, as the bounded provider comparison and the live check both show. The third gap is the distributed profile: Spark and WebHDFS are implemented and gated behind flags, but the end-to-end ingestion has so far been exercised with the local equivalents, and a cluster run must be performed before the distributed claims can be stated as measured.
+
+These three gaps also determine the order of the perspectives presented in the conclusion: build the reviewed multilingual and multi-hop question set, run the extraction pipeline at full remote coverage on the corpus, and then rerun the same benchmark on the cluster profile so that the comparison between vector and graph retrieval is made on material produced by the distributed path.

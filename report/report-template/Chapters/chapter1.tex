@@ -11,11 +11,15 @@ The platform follows a layered architecture. The ingestion layer collects explic
 \label{fig:general-architecture}
 \end{figure}
 
+Figure~\ref{fig:general-architecture} shows that the layers are connected by a single data contract: every document that crosses a layer keeps its source URL, its canonical URL, its title, its detected language, its document type, its feed URL when it comes from RSS, its publication date and its crawl timestamp. This contract is the reason why the final answer can cite an original page instead of an anonymous passage, and it is enforced from the crawler item to the graph node.
+
 \section{Information Flow}
-The flow is: source URL $\rightarrow$ Scrapy item $\rightarrow$ raw document $\rightarrow$ Spark/Python ETL $\rightarrow$ chunks $\rightarrow$ graph and vector indexes $\rightarrow$ GraphRAG retrieval $\rightarrow$ cited answer. Each page keeps its URL, domain, title, language, document type and crawl timestamp.
+The flow is: source URL $\rightarrow$ Scrapy item $\rightarrow$ raw document $\rightarrow$ Spark ETL $\rightarrow$ chunks $\rightarrow$ graph and vector indexes $\rightarrow$ GraphRAG retrieval $\rightarrow$ cited answer. The raw zone keeps the untouched document, so a defect introduced by cleaning or chunking is always traceable back to its source and the cleaning stage can be replayed without crawling again.
+
+Retrieval itself follows three cooperating signals. A question is first matched against the entity nodes of the graph, the neighbourhood of the matched entities is extracted with a bounded number of hops, and hybrid passage retrieval supplies the textual evidence. The graph contributes structure and provenance; the vector index contributes semantic recall; the lexical component protects exact names, acronyms and French or Arabic terms that a dense representation can blur.
 
 \section{Deployment}
-Docker Compose runs the API, frontend, ingestion worker, Qdrant and Neo4j. WebHDFS and Spark are optional integrations with local fallbacks for development. This keeps the prototype executable on a workstation while preserving a path to distributed deployment.
+Docker Compose runs the API, the frontend, the ingestion worker, Qdrant and Neo4j. WebHDFS and Spark are optional integrations with local fallbacks for development. This keeps the prototype executable on a workstation while preserving a path to distributed deployment.
 
 \begin{figure}[H]
 \centering
@@ -24,5 +28,11 @@ Docker Compose runs the API, frontend, ingestion worker, Qdrant and Neo4j. WebHD
 \label{fig:deployment}
 \end{figure}
 
-\section{Current Corpus and Target Sources}
-The current indexed corpus contains \textbf{48 documents}: 35 HTML pages, 10 RSS/Atom entries and 3 PDF documents. The documents come from three domains: HCP (24), AMMC (16) and Bank Al-Maghrib (8). The configured targets are the HCP enterprise and economy pages, the AMMC issuer financial-statements page, Bank Al-Maghrib statistics, the Bank Al-Maghrib annual report PDF and the HCP RSS feed.
+The Compose topology in Figure~\ref{fig:deployment} is deliberately split between a one-shot pipeline and long-lived services. The ingestion worker runs the restart-safe persistent ingestion loop and publishes a new generation only after the graph and the vector index have been checked; the API and the frontend never read a half-written generation. In the distributed profile the worker is started with Spark and WebHDFS enabled, so the same container image can run the workstation profile and the cluster profile without code changes.
+
+\section{Corpus and Target Sources}
+The corpus currently aggregates approximately \textbf{78\,000 documents of different types}. The distribution is dominated by HTML pages harvested from institutional portals, followed by PDF reports published annually or per semester, RSS/Atom entries that carry news and publication announcements, and structured data files (CSV and JSON) exposed next to statistical releases. The documents originate from three authoritative domains: the \textbf{Haut-Commissariat au Plan}, the \textbf{Autorité Marocaine du Marché des Capitaux} and \textbf{Bank Al-Maghrib}.
+
+The crawler is not applied blindly to those portals. We configured a bounded list of authorised entry points, all of them public and machine-readable, and each one is documented with the reason why it was retained. The configured targets are the HCP enterprise-conjuncture page, the HCP economy page, the HCP enterprise-conjuncture publications listing, the AMMC page listing issuers' financial statements, the Bank Al-Maghrib statistics section, the Bank Al-Maghrib annual report PDF and the HCP RSS syndication feed. Restricting the seed list keeps the crawl reproducible, keeps the loader polite towards the institutional infrastructure, and makes the coverage of the corpus an explicit design decision rather than a side effect of link discovery.
+
+Within that corpus, the prototype indexes a curated working subset: the last validated build contains 54 documents and 574 chunks, which is the material actually used by the demonstration, the graph analytics and the evaluation chapters. The difference between the aggregated corpus and the indexed subset is intentional; it keeps every experiment cheap to rerun on a workstation while the ingestion path stays dimensioned for the full corpus.

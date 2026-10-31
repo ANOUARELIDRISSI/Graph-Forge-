@@ -1,23 +1,34 @@
-\xpg@aux {}{english}
+\babel@toc {english}{}\relax 
 \contentsline {chapter}{Abstract}{1}{chapter*.1}%
-\contentsline {chapter}{Table of Contents}{2}{chapter*.2}%
-\contentsline {chapter}{General Introduction}{1}{chapter*.3}%
-\contentsline {chapter}{\numberline {1}Architecture}{2}{chapter.1}%
-\contentsline {section}{\numberline {1.1}Overview}{2}{section.1.1}%
-\contentsline {section}{\numberline {1.2}Information Flow}{2}{section.1.2}%
-\contentsline {section}{\numberline {1.3}Deployment}{3}{section.1.3}%
-\contentsline {section}{\numberline {1.4}Current Corpus and Target Sources}{3}{section.1.4}%
-\contentsline {chapter}{\numberline {2}Principal Pipeline Components}{4}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Crawler and PDF Sources}{4}{section.2.1}%
-\contentsline {section}{\numberline {2.2}Raw Storage and ETL}{4}{section.2.2}%
-\contentsline {section}{\numberline {2.3}Chunking and Embeddings}{5}{section.2.3}%
-\contentsline {section}{\numberline {2.4}BM25 and Hybrid Retrieval}{5}{section.2.4}%
-\contentsline {section}{\numberline {2.5}Entity and Relation Extraction}{5}{section.2.5}%
-\contentsline {section}{\numberline {2.6}GraphRAG API and Frontend}{5}{section.2.6}%
-\contentsline {chapter}{\numberline {3}Evaluation}{7}{chapter.3}%
-\contentsline {section}{\numberline {3.1}What is Ragas?}{7}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Retrieval Evaluation}{7}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Ragas Results}{8}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Data Quality Statistics}{8}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Interpretation and Limits}{8}{section.3.5}%
-\contentsline {chapter}{Conclusion and Perspectives}{9}{chapter*.11}%
+\contentsline {chapter}{Table of Contents}{3}{chapter*.2}%
+\contentsline {chapter}{Introduction}{1}{chapter*.3}%
+\contentsline {chapter}{\numberline {1}Architecture}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Overview}{3}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Information Flow}{4}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Deployment}{4}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Corpus and Target Sources}{5}{section.1.4}%
+\contentsline {chapter}{\numberline {2}Main Pipeline Components}{6}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Scrapy Crawlers and Authorised Targets}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Raw Zone: HDFS and Local Fallback}{7}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Distributed ETL with Spark}{7}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Chunking Strategy}{8}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Embeddings and Vector Store}{9}{section.2.5}%
+\contentsline {section}{\numberline {2.6}BM25 and Hybrid Retrieval}{9}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Entity and Relation Extraction}{10}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Graph Storage and Analytics}{11}{section.2.8}%
+\contentsline {section}{\numberline {2.9}GraphRAG Service, API and Frontend}{11}{section.2.9}%
+\contentsline {chapter}{\numberline {3}Evaluation}{13}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Ragas and its Evaluation Metrics}{13}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Retrieval Evaluation Protocol}{14}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Retrieval Results}{14}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Ragas Results}{15}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Extraction and Data Quality Diagnostics}{15}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Interpretation and Limits}{16}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Results}{17}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Ingestion and Index Build}{17}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Retrieval Comparison}{18}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Ragas Evaluation Status}{19}{section.4.3}%
+\contentsline {section}{\numberline {4.4}End-to-End Validation}{19}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Example of a Grounded Answer}{20}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Discussion}{22}{section.4.6}%
+\contentsline {chapter}{Conclusion and Perspectives}{23}{chapter*.17}%

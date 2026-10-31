@@ -1,8 +1,15 @@
-\chapter{Principal Pipeline Components}
+\chapter{Main Pipeline Components}
 \label{chap:pipeline}
 
-\section{Crawler and PDF Sources}
-Scrapy crawls only configured and authorised targets, obeys robots.txt and uses conservative delays. HTML pages, RSS/Atom feeds and PDFs are dispatched through the same provenance-aware parser. PDF text is extracted with \texttt{pypdf}; short or failed extractions are rejected or recorded as failures.
+This chapter follows a document through the platform, from the moment it is requested from an institutional portal to the moment it becomes evidence in an answer. Each section describes one component, the problem it solves, the technology retained and the way the component behaves when the corresponding infrastructure is absent, because a demonstrator that only works on a full cluster cannot be evaluated on a workstation.
+
+\section{Scrapy Crawlers and Authorised Targets}
+\label{sec:crawlers}
+Crawling is implemented with Scrapy. Two spiders are defined: a base spider, \texttt{MoroccanPagesSpider}, captures provenance, performs lightweight Arabic/French/English language detection, attaches a Morocco context label and follows links with a bounded depth, and a dedicated spider, \texttt{business\_sources}, specialises it for the authorised business portals and accepts an explicit list of seed URLs. Only configured and authorised targets are crawled.
+
+The crawl is deliberately conservative. \texttt{ROBOTSTXT\_OBEY} is enabled, the download delay is one second, concurrency is limited to two requests per domain and link following is bounded. These settings protect the availability of public institutional services and keep the crawl reproducible: the same seed list yields the same corpus, which is a precondition for comparing two retrieval strategies on identical material.
+
+The spider performs content-type dispatch so that HTML pages, RSS/Atom feeds and PDF files converge on a single provenance-aware parser. HTML is reduced to its readable text, feed entries inherit the feed URL and the publication date, and PDF text is extracted with \texttt{pypdf}; extractions that are too short or that fail are rejected and counted instead of being silently accepted. Every accepted item is emitted to a JSON Lines feed (\texttt{data/pages.jsonl}) that keeps the URL, canonical URL, title, text, language, source domain, document type, feed URL, publication date and crawl timestamp.
 
 \begin{figure}[H]
 \centering
@@ -11,8 +18,21 @@ Scrapy crawls only configured and authorised targets, obeys robots.txt and uses 
 \label{fig:ingestion}
 \end{figure}
 
-\section{Raw Storage and ETL}
-The raw zone writes to WebHDFS when enabled and falls back to local storage when the namenode is unavailable. Spark performs deduplication, whitespace normalization, source-domain normalization and minimum-text validation. A pure-Python ETL path remains available for local testing.
+\section{Raw Zone: HDFS and Local Fallback}
+\label{sec:hdfs}
+The first storage decision is to keep the document exactly as it was collected. The raw zone is therefore written before any cleaning, deduplication or chunking, which makes the rest of the pipeline replayable: if a normalisation rule changes, the cleaning and indexing stages can be recomputed from the raw documents without requesting the source again.
+
+Two implementations satisfy the same interface. The development implementation, \texttt{RawDocumentStore}, writes each document as a UTF-8 file under \texttt{data/raw}. The distributed implementation, \texttt{HdfsDocumentStore}, writes to a Hadoop Distributed File System cluster through the \textbf{WebHDFS REST API}. HDFS distributes each file in blocks replicated across the nodes of the cluster, which is what allows the raw zone to hold tens of thousands of documents without depending on the disk of a single machine; WebHDFS is used rather than the native Hadoop client because it needs only an HTTP call, so the container image stays light and no JVM client library has to be shipped.
+
+Concretely, the store opens a create operation on the namenode with \texttt{op=CREATE} and \texttt{overwrite=true}, authenticates with the simple \texttt{user.name} mechanism, and places the document under the configured root \texttt{/user/hdfs/moroccan-business}. The behaviour on failure is what makes the component usable: if the namenode is unreachable, the write degrades to the local store, the fallback is recorded in the ingestion statistics and the pipeline continues. Ingestion is never blocked by a missing cluster, but the degradation remains visible through the pipeline status endpoint instead of being hidden. The whole behaviour is controlled by the \texttt{HDFS\_ENABLED} flag, together with the namenode URL and the cluster root.
+
+\section{Distributed ETL with Spark}
+\label{sec:spark}
+Between the raw zone and the graph the pipeline applies four ETL rules: collapse whitespace in the title and in the text, lowercase the source domain, discard documents whose normalised text is shorter than 80 characters, and keep the first record for each URL. The reference browser and legal documents contain navigation menus, repeated headers and duplicated releases, so these rules remove noise that would otherwise be indexed as if it were content.
+
+These rules are implemented twice, on purpose. The pure-Python implementation, \texttt{etl\_local}, is the reference that runs during tests and on a workstation. The Spark implementation, \texttt{etl\_spark}, expresses exactly the same rules as a Spark SQL job: the records are turned into a DataFrame, the minimum-length rule becomes a filter, the deduplication becomes a \texttt{row\_number()} window ordered by the original position so that document order is preserved, and the result is collected as plain records. Spark is what turns this stage into a distributed one: the DataFrame is partitioned and the cleaning is executed in parallel across the executors of the cluster, which is why the stage is dimensioned for a corpus of tens of thousands of documents rather than for the fifty-four documents of the demonstration subset.
+
+The engine is selected at runtime by \texttt{run\_etl}: Spark is used when the \texttt{SPARK\_ENABLED} flag is set and the \texttt{pyspark} distribution is importable, and the Python path is used otherwise. The Spark master is configurable, so development runs on \texttt{local[*]} while the distributed profile targets a standalone cluster at \texttt{spark://spark-master:7077}. A dedicated entry point, \texttt{scripts/spark\_ingest.py}, reads the crawler output and writes the cleaned dataset: on Linux and in Docker it writes Parquet, a columnar format that keeps the distributed output compact, and on Windows it writes JSON because the Hadoop native libraries required by Parquet are not reliable there. The equivalence of the two engines is what allows the report to present measurements obtained locally without claiming that they were obtained on a cluster.
 
 \begin{figure}[H]
 \centering
@@ -21,14 +41,35 @@ The raw zone writes to WebHDFS when enabled and falls back to local storage when
 \label{fig:etl-chunking}
 \end{figure}
 
-\section{Chunking and Embeddings}
-Validated pages are divided into overlapping text chunks using an 800-character window and 120-character overlap. The resulting step is 680 characters, which preserves context across boundaries. NVIDIA's embedding model \texttt{nvidia/nemotron-3-embed-1b} indexes the chunks in Qdrant. The offline deterministic test fallback uses 256 dimensions; production Qdrant collections take the dimension returned by the NVIDIA endpoint.
+\section{Chunking Strategy}
+\label{sec:chunking}
+After cleaning, each document is divided into overlapping character windows of 800 characters with an overlap of 120 characters, which corresponds to a stride of 680 characters. The window is large enough to contain a full paragraph or a complete table row with its caption, and small enough to remain a precise unit of evidence; the overlap prevents a sentence that straddles a boundary from being cut in the middle and losing its meaning in both fragments.
+
+Each chunk carries its own identity of the form \texttt{url\#chunk-n}, its parent document identifier, its position index, the canonical source URL and the language inherited from the page. That granularity is what makes the provenance chain complete: a graph node or a Qdrant point always resolves to a fragment of a specific document, and the answer can quote the fragment while citing the page it came from. The same chunking function is used by the API for pagination, by the evaluation scripts and by the ingestion worker, so a chunk identifier means the same thing everywhere in the system.
+
+\section{Embeddings and Vector Store}
+\label{sec:embeddings}
+Semantic retrieval relies on NVIDIA embeddings. The model used is \texttt{nvidia/}\allowbreak\texttt{nemotron-3-embed-1b}, a compact embedding model served through an OpenAI-compatible endpoint. The verified dimensionality of the returned vectors is \textbf{2048 dimensions}; the collection therefore stores 2048-float vectors, which is a good compromise between the geometric capacity needed to separate French and Arabic business vocabulary and the memory cost of a large index.
+
+The client distinguishes the two sides of retrieval: passages are embedded with the \texttt{passage} input type at index time and questions with the \texttt{query} input type at search time, a convention that improves the alignment between question and evidence for asymmetric retrieval models. Responses are validated before use: if the provider returns a different number of vectors than requested, an empty vector or a non-finite value, the client raises and the caller falls back instead of writing corrupted points.
+
+The vectors are indexed in \textbf{Qdrant}, where each point also carries the chunk payload, so provenance is returned directly by the search and no second lookup is needed to display a source. When the provider is disabled, an offline deterministic hashing embedding of \textbf{256 dimensions} replaces the remote model. This fallback exists so that tests, continuous integration and demonstrations never depend on quota or connectivity; the report therefore distinguishes explicitly between measurements taken with the production model and measurements taken offline.
 
 \section{BM25 and Hybrid Retrieval}
-Retrieval combines cosine similarity from embeddings with BM25 lexical relevance. BM25 uses $k_1=1.2$, $b=0.75$ and a lexical multiplier of 2.2, with inverse document frequency computed over the indexed chunks and document-length normalization against the average chunk length. This hybrid score helps preserve exact names, acronyms and French/Arabic terms that may be missed by semantic similarity alone.
+\label{sec:bm25}
+Dense retrieval alone is fragile on institutional vocabulary: acronyms, issuer names, article numbers and French or Arabic legal terms may be rare enough that their embedding is not distinctive. We therefore combine the cosine similarity of the embeddings with a \textbf{BM25} lexical score computed over the indexed chunks.
+
+The BM25 implementation follows the standard formulation with $k_1 = 1.2$, $b = 0.75$ and a lexical multiplier of 2.2. For each query term, the inverse document frequency is computed over the chunks actually indexed, which adapts the weighting to the corpus instead of relying on a general-purpose prior; the term frequency is normalised by the chunk length divided by the average chunk length, so a long document does not gain an advantage simply by containing more words. The hybrid score is the sum of the cosine similarity and the lexical score, and it is returned together with the chunk so that the caller can re-rank without losing the semantic signal.
+
+Two consumers use this score. The vector store ranks passages by the hybrid value, and the GraphRAG service re-ranks the retrieved passages with a bounded blend of the normalised semantic score, the lexical overlap with the question and the graph proximity of the passage URL. The semantic term keeps the largest weight so the ranking produced by the retriever is preserved; the lexical and graph terms act as tie-breakers that can move near-equal passages but cannot promote a passage the retriever scored well below a competitor.
 
 \section{Entity and Relation Extraction}
-Mistral is used to extract typed entities and relations from chunks. The graph stores provenance through page and chunk links. A heuristic fallback, durable retry queue and extraction cache make failures visible without silently losing records.
+\label{sec:extraction}
+The knowledge graph is built from the chunks by a large language model used as a structured extractor. The default extractor is \textbf{Mistral Small} (\texttt{mistral-small-latest}) called with structured JSON output and with its reasoning pass disabled; an NVIDIA instruct model, \texttt{nvidia/nemotron-3.5-lightning-30b-a3b}, is available as an alternative provider, and both are selected by a single configuration flag. The model receives the chunk and is instructed to return typed entities with a confidence and relations expressed as subject--predicate--object, with an explicit instruction not to invent facts and to stay grounded in the supplied passage.
+
+Because remote extraction is the most fragile and the most expensive stage of the pipeline, it is surrounded by three safeguards. A \textbf{durable cache} keyed by model and chunk text keeps completed extractions, so an interrupted job resumes where it stopped and a re-crawl of unchanged pages costs nothing; only successful remote results are cached. A \textbf{durable retry queue} defers chunks that failed or that exceeded the per-run remote call budget, with exponential backoff from one minute up to thirty minutes, so temporary provider saturation is absorbed instead of losing records. A \textbf{shared rate limiter} paces the calls of every container through a common state file, so the API and the ingestion worker cannot together exceed the provider's quota window.
+
+When the remote provider is unavailable or disabled, the extractor degrades to a deterministic \textbf{heuristic extractor} based on a gazetteer of Moroccan business entities. That extractor emits a relation only when the text explicitly reads \texttt{<entity> <connector> <entity>}, so the fallback never invents an association; every result is tagged with its method, either \texttt{mistral-llm}, \texttt{nvidia-llm}, \texttt{heuristic} or \texttt{heuristic-fallback}. The distinction matters for reading the results chapter: the tag says whether a graph edge comes from a language model or from the pattern-based fallback, and the pipeline status endpoint counts the two separately.
 
 \begin{figure}[H]
 \centering
@@ -37,8 +78,26 @@ Mistral is used to extract typed entities and relations from chunks. The graph s
 \label{fig:extraction-embeddings}
 \end{figure}
 
-\section{GraphRAG API and Frontend}
-FastAPI exposes grounded questions, graph analytics, source pagination, PDF viewing, pipeline status and evaluation statistics. The React frontend provides the assistant conversation, source pages, graph explorer, operational pipeline view and evaluation dashboard.
+\section{Graph Storage and Analytics}
+\label{sec:graph}
+Entities, relations, pages and chunks are stored as a property graph in \textbf{Neo4j}, with uniqueness constraints and indexes on node identifiers so that re-ingestion is idempotent, and with page and chunk links that preserve provenance for every extracted element. A JSON snapshot is maintained alongside the database so that the API, the tests and the offline evaluation can run without a live server.
+
+On top of that graph the platform exposes analytics rather than only lookup. It computes degree centrality, PageRank, connected components, label-propagation community detection and shortest paths between two nodes. These measures are not decorative: PageRank and degree centrality decide which entity becomes the seed of a question, communities summarise the thematic clusters of the corpus, and the shortest path answers the relational questions that a keyword search cannot express.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/04-neo4j-analytics.png}
+\caption{Knowledge-graph storage and analytics view.}
+\label{fig:graph-analytics}
+\end{figure}
+
+\section{GraphRAG Service, API and Frontend}
+\label{sec:service}
+The question-answering service implements the GraphRAG pattern. The question is reduced to content terms with a French and English stop-word list; those terms are matched against entity nodes, excluding page and source nodes; the best matches, ranked by degree and by number of mentions, become the seeds. The $k$-hop neighbourhood of the seeds is extracted, at most forty graph triples are serialised as context, and the hybrid retriever supplies the passages. The final evidence list contains at most five passages and reserves one slot per distinct document, so near-duplicate chunks cannot consume the whole context budget.
+
+Two generation paths exist. When a provider credential is configured, the context is sent to the generation model, \texttt{mistralai/mistral-large-4-1t-a52b}, with an instruction to answer only from the supplied context and to state when the evidence is insufficient. When it is not, the service returns a deterministic grounded summary built from the seed entities, the subgraph triples and the retrieved passages. In both cases the response contains the answer, the source URLs, the evidence snippets with their scores, the matched entities, the subgraph and the measured latency, and the mode field states whether the answer was generated or locally composed.
+
+FastAPI exposes these capabilities as a versioned HTTP API: grounded questions, graph analytics, source pagination, PDF viewing, pipeline status, data quality and evaluation statistics. The React frontend is organised around the same operations, with a conversation view for the assistant, a sources view with pagination and PDF display, a graph explorer for the knowledge graph, an operational view for the ingestion pipeline and an evaluation dashboard that displays the retrieval metrics and the Ragas scores when they are available.
 
 \begin{figure}[H]
 \centering
