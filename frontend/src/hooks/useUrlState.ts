@@ -1,0 +1,2 @@
+import { useSearchParams } from 'react-router-dom';
+export function useUrlState(){const [params,setParams]=useSearchParams();const raw=Number(params.get('limit'));const limit=[50,100,200].includes(raw)?raw:100;const q=params.get('q')??'';const node=params.get('node');const update=(next:Record<string,string|null>)=>setParams(prev=>{const p=new URLSearchParams(prev);Object.entries(next).forEach(([key,value])=>value?p.set(key,value):p.delete(key));return p},{replace:true});return{limit,q,node,update};}

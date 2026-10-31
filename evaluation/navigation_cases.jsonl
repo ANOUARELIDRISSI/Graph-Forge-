@@ -1,0 +1,4 @@
+{"question":"Where can I find AMMC issuer financial statements?","expected_url":"https://www.ammc.ma/fr/liste-etats-financiers-emetteurs?field_annee_value_1=All&field_emetteur_target_id_verf=All","review_status":"agent-authored navigation diagnostic"}
+{"question":"Quel site présente la stratégie data et statistiques de Bank Al-Maghrib ?","expected_url":"https://www.bkam.ma/Statistiques/Strategie-data-et-statistiques","review_status":"agent-authored navigation diagnostic"}
+{"question":"Où consulter le fonds de soutien financier aux TPME de Bank Al-Maghrib ?","expected_url":"https://www.bkam.ma/Trouvez-l-information-concernant/Fonds-de-soutien-financier-aux-tpme","review_status":"agent-authored navigation diagnostic"}
+{"question":"Where are HCP enterprise economic outlook publications listed?","expected_url":"https://www.hcp.ma/Publications-Conjoncture-entreprise_r622.html","review_status":"agent-authored navigation diagnostic"}

@@ -1,0 +1,5 @@
+# The frontend build context is this directory. Exclude host dependency trees
+# and build output so the image is built only from source.
+node_modules/
+dist/
+tsconfig.tsbuildinfo

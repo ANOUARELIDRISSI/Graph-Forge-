@@ -1,0 +1,30 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\title{Moroccan Business Intelligence Knowledge Graph}
+\author{GraphRAG Platform Architecture}
+\begin{document}
+\maketitle
+\tableofcontents
+\section{Objective}
+This report documents a persistent, multilingual Moroccan business intelligence
+pipeline that combines heterogeneous ingestion, Spark ETL, entity extraction,
+Nemotron embeddings, BM25, Qdrant, Neo4j, and GraphRAG.
+\section{System Architecture}
+The architecture is decomposed into independently editable diagrams in the
+\texttt{drawio/} directory. Export each Draw.io file to PDF or PNG and include
+the result below.
+\begin{figure}[h]\centering\fbox{\parbox{0.8\textwidth}{Export \texttt{drawio/01-ingestion.drawio} here.}}\caption{Ingestion}\end{figure}
+\section{Persistent Ingestion}
+The worker uses \texttt{scripts/persistent\_ingest.py}, a checkpoint file, a
+raw-zone marker, and repeatable chunk/graph outputs. It can run once in CI or
+continuously at a configured interval.
+\section{Evaluation}
+Report document count, chunk count, retrieval Recall@k, exact-match hit rate,
+answer groundedness, latency, and failure rates. The current evaluation entry
+point is \texttt{scripts/evaluate\_rag.py}.
+\section{Reproducibility}
+All services are defined in \texttt{docker-compose.yml}; Python dependencies
+are locked in \texttt{uv.lock}.
+\end{document}

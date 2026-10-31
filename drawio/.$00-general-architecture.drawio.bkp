@@ -1,0 +1,52 @@
+<mxfile host="Electron">
+  <diagram name="General GraphRAG Architecture" id="0">
+    <mxGraphModel dx="1709" dy="1187" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sources" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd" value="Authorised Moroccan sources&#xa;HCP • AMMC • Bank Al-Maghrib&#xa;HTML • RSS/Atom • PDF" vertex="1">
+          <mxGeometry height="100" width="220" x="40" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="crawl" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9" value="Scrapy crawler&#xa;robots.txt • delay • provenance&#xa;PDF extraction with pypdf" vertex="1">
+          <mxGeometry height="100" width="230" x="310" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="etl" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0" value="Raw zone + ETL&#xa;WebHDFS / local fallback&#xa;Spark / Python validation" vertex="1">
+          <mxGeometry height="100" width="230" x="310" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="intel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5" value="Intelligence layer&#xa;Mistral entities + relations&#xa;NVIDIA embeddings" vertex="1">
+          <mxGeometry height="100" width="230" x="600" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec" value="Storage layer&#xa;Neo4j knowledge graph&#xa;Qdrant vector index" vertex="1">
+          <mxGeometry height="100" width="230" x="600" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede7f6" value="FastAPI GraphRAG&#xa;BM25 + cosine retrieval&#xa;graph expansion + citations" vertex="1">
+          <mxGeometry height="100" width="230" x="900" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f7fa" value="React frontend&#xa;Chat • Sources • Pipeline&#xa;Graph • Evaluation" vertex="1">
+          <mxGeometry height="100" width="230" x="900" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="a" edge="1" parent="1" source="sources" target="crawl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b" edge="1" parent="1" source="crawl" target="etl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c" edge="1" parent="1" source="etl" target="intel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d" edge="1" parent="1" source="etl" target="store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e" edge="1" parent="1" source="intel" target="store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f" edge="1" parent="1" source="store" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="g" edge="1" parent="1" source="api" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

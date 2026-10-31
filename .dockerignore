@@ -1,0 +1,19 @@
+# Keep the build context small and deterministic: never ship local virtualenvs,
+# dependency trees, caches or VCS metadata into the images.
+.venv/
+.git/
+.gitignore
+.third_party/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+.pytest_cache/
+.pytest_tmp/
+.ruff_cache/
+**/__pycache__/
+*.pyc
+*.log
+build_stack.log
+pytest_run.txt
+.env
