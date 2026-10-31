@@ -10,6 +10,7 @@ frontend/node_modules/
 frontend/dist/
 .env
 report-template/
+report/latex/
 report/latex/.git/
 report/latex/*.aux
 report/latex/*.log
