@@ -1,0 +1,23 @@
+% !TeX program = xelatex
+\documentclass[12pt,a4paper,oneside]{book}
+\input{Packages}
+\hypersetup{colorlinks=true,linkcolor=navyblue,citecolor=navyblue,urlcolor=navyblue,
+  pdfauthor={Fatima Ezzahrae Fadel; Wijdane El Hariri},pdftitle={Moroccan GraphRAG Platform},pdfpagemode=UseOutlines}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+\include{Frontmatter/Page_de_garde}
+\afterpage{\blankpage}
+\frontmatter
+\pagenumbering{arabic}
+\input{Frontmatter/AbstractEN}
+\tableofcontents
+\addcontentsline{toc}{chapter}{Table of Contents}
+\mainmatter
+\hypersetup{pageanchor=true}
+\input{Frontmatter/GeneralIntroduction}
+\input{Chapters/chapter1}
+\input{Chapters/chapter2}
+\input{Chapters/chapter3}
+\input{Endmatter/ConclusionPerspectives}
+\end{document}

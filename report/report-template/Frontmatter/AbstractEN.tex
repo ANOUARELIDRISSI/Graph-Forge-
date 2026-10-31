@@ -1,0 +1,10 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\begingroup\setstretch{1.08}
+This report presents a Graph Retrieval-Augmented Generation (GraphRAG) platform for Moroccan business intelligence. The system crawls explicitly authorised Arabic, French and English sources, extracts HTML, RSS and PDF content with provenance, stores a raw zone in HDFS when available, and applies Spark-backed ETL before indexing documents and chunks. Mistral is used for entity and relation extraction, while NVIDIA embeddings support semantic retrieval. A FastAPI service exposes graph analytics, source exploration and grounded conversational answers, and a React frontend provides operational, source and evaluation views. The validation combines retrieval metrics with Ragas faithfulness, answer relevance and context-precision measurements, while clearly distinguishing smoke evaluation from independently reviewed test cases.
+
+\par\medskip
+\noindent\rule{\textwidth}{0.5pt}\par\smallskip
+{\textbf{Keywords:}} GraphRAG, Moroccan business intelligence, Scrapy, PDF extraction, Mistral, NVIDIA embeddings, HDFS, Spark, FastAPI, Ragas.\par\smallskip
+\noindent\rule{\textwidth}{0.5pt}
+\endgroup

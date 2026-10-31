@@ -1,0 +1,8 @@
+\chapter*{Conclusion and Perspectives}
+\addcontentsline{toc}{chapter}{Conclusion and Perspectives}
+
+This report presented a Moroccan GraphRAG platform for source-grounded business intelligence at ANRT. The solution connects respectful HTML, RSS and PDF crawling with Spark/HDFS-ready ingestion, Mistral extraction, NVIDIA embeddings, graph and vector storage, FastAPI services and a React interface.
+
+The platform was validated through automated tests, source-quality scoring, retrieval metrics and a Ragas execution path. The current retrieval benchmark reports a 0.75 Recall@5 tie between vector and GraphRAG retrieval, confirming a functional baseline while highlighting the need for a larger reviewed evaluation set.
+
+Future work includes adding an HDFS namenode and Spark cluster to the deployment, running Ragas with a curated multilingual dataset, adding authentication and authorization, and measuring extraction quality separately from retrieval quality.

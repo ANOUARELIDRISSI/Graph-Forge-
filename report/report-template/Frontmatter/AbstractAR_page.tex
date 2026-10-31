@@ -1,0 +1,22 @@
+% !TeX program = xelatex
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\usepackage{geometry}
+\usepackage{setspace}
+\setdefaultlanguage{english}
+\setotherlanguage{arabic}
+\setmainfont{TeX Gyre Pagella}
+\IfFontExistsTF{Amiri}{\newfontfamily\arabicfont[Script=Arabic,Scale=1.05]{Amiri}}{\newfontfamily\arabicfont[Script=Arabic,Scale=1.05]{Noto Naskh Arabic}}
+\geometry{a4paper,left=2.5cm,right=2.5cm,top=2.6cm,bottom=2.6cm}
+\pagestyle{empty}
+\begin{document}
+\begin{otherlanguage}{arabic}
+\begin{center}{\Huge\bfseries الملخص}\end{center}
+\vspace{0.6cm}
+يقدم هذا التقرير مشروع نهاية الدراسة بعنوان \textenglish{[Project Title]} المنجز لدى \textenglish{PFE ENTERPRISE}. استبدل هذا النص بملخص موجز يوضح سياق المشروع والمشكلة التي يعالجها والحل المقترح والمنهجية والنتائج الرئيسية.
+
+\vspace{0.8cm}
+\noindent\textbf{الكلمات المفتاحية:} مشروع نهاية الدراسة، قالب التقرير، التحليل، التصميم، التنفيذ، التحقق.
+\end{otherlanguage}
+\end{document}

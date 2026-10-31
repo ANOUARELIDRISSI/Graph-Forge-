@@ -1,0 +1,23 @@
+\xpg@aux {}{english}
+\contentsline {chapter}{Abstract}{1}{chapter*.1}%
+\contentsline {chapter}{Table of Contents}{2}{chapter*.2}%
+\contentsline {chapter}{General Introduction}{1}{chapter*.3}%
+\contentsline {chapter}{\numberline {1}Architecture}{2}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Overview}{2}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Information Flow}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Deployment}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Current Corpus and Target Sources}{3}{section.1.4}%
+\contentsline {chapter}{\numberline {2}Principal Pipeline Components}{4}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Crawler and PDF Sources}{4}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Raw Storage and ETL}{4}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Chunking and Embeddings}{5}{section.2.3}%
+\contentsline {section}{\numberline {2.4}BM25 and Hybrid Retrieval}{5}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Entity and Relation Extraction}{5}{section.2.5}%
+\contentsline {section}{\numberline {2.6}GraphRAG API and Frontend}{5}{section.2.6}%
+\contentsline {chapter}{\numberline {3}Evaluation}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}What is Ragas?}{7}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Retrieval Evaluation}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Ragas Results}{8}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Data Quality Statistics}{8}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Interpretation and Limits}{8}{section.3.5}%
+\contentsline {chapter}{Conclusion and Perspectives}{9}{chapter*.11}%
